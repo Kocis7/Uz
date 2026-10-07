@@ -1,0 +1,15 @@
+{
+  "name": "Kalendář – 4.A a Vnorovy",
+  "short_name": "Kalendář",
+  "description": "Rozvrh, úkoly, testy, zápasy, svátky a narozeniny na jednom místě.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F1FC",
+  "theme_color": "#6C4CF1",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

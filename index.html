@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kalendář">
+<meta name="theme-color" content="#6C4CF1">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Kalendář</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#F3F1FC; --bg2:#EAF0FF; --bg3:#FBF0FF;
+    --surface:#FFFFFF;
+    --ink:#201E3B; --ink-soft:#6B6890; --line:#E7E5F5;
+    --brand:#6C4CF1; --brand2:#9B6BFF; --brand-soft:#EDE8FF;
+    --work:#2D6CFF; --personal:#FF4D8D; --health:#12B886; --leisure:#FFB020;
+    --skola:#17B6CE; --sport:#FF6B35; --other:#6C4CF1;
+    --nameday:#FF3D9E; --birthday:#FFD23D;
+    --danger:#EF476F;
+    --svatek-bg:#FFDCE6; --svatek-ink:#C22B52;
+    --prazdniny-bg:#FFE7BE; --prazdniny-ink:#9A6100;
+    --shadow-c:rgba(108,76,241,0.12);
+    --radius-lg:22px; --radius-md:14px; --radius-sm:10px;
+  }
+  :root[data-theme="dark"]{
+    --bg1:#161327; --bg2:#1A1730; --bg3:#1E1830;
+    --surface:#231E3D;
+    --ink:#F1EFFC; --ink-soft:#A7A2CC; --line:#352F57;
+    --brand:#9B82FF; --brand2:#C2A8FF; --brand-soft:#352D5C;
+    --work:#5B8CFF; --personal:#FF7AAC; --health:#2DD9A4; --leisure:#FFC24D;
+    --skola:#3DD1E8; --sport:#FF8A5C; --other:#9B82FF;
+    --nameday:#FF6BB8; --birthday:#FFDE70;
+    --danger:#FF6B86;
+    --svatek-bg:#432538; --svatek-ink:#FF9CBB;
+    --prazdniny-bg:#433415; --prazdniny-ink:#FFCD7A;
+    --shadow-c:rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 45%, var(--bg3) 100%);
+    background-attachment:fixed;
+    color:var(--ink); font-family:'Inter', system-ui, sans-serif;
+    min-height:100vh; display:flex; justify-content:center;
+  }
+  .app{ width:100%; max-width:430px; min-height:100vh; position:relative; padding:20px 16px 96px; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .nav-btn{
+    width:40px; height:40px; border-radius:50%; border:none;
+    background:var(--surface); color:var(--brand); font-size:20px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 10px rgba(108,76,241,0.15); cursor:pointer;
+  }
+  .nav-btn:active{ transform:scale(0.92); }
+  .month-wrap{ text-align:center; }
+  .month-label{
+    font-family:'Fredoka', sans-serif; font-weight:700; font-size:21px; letter-spacing:0.2px;
+    background:linear-gradient(90deg, var(--brand), var(--brand2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .today-link{ border:none; background:none; color:var(--brand); font-size:13px; font-weight:600; padding:2px 0 0; cursor:pointer; }
+  .page-title{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:22px; margin:4px 0 18px; display:flex; align-items:center; gap:8px; }
+
+  .weekdays{ display:grid; grid-template-columns:repeat(7,1fr); text-align:center; color:var(--ink-soft); font-size:12px; font-weight:700; margin:0 -16px 6px; padding:0 6px; }
+  .calendar{
+    display:grid; grid-template-columns:repeat(7,1fr); gap:3px;
+    margin:0 -16px; padding:6px 6px 14px;
+    background:transparent;
+  }
+  .day-cell{
+    aspect-ratio:0.92; border:none; background:transparent; border-radius:14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    font-family:'Fredoka', sans-serif; font-size:16px; font-weight:500; color:var(--ink);
+    cursor:pointer; position:relative; transition:transform .1s;
+  }
+  .day-cell:active{ transform:scale(0.9); }
+  .day-cell.muted{ color:#D3D1E6; }
+  .day-cell.today{ box-shadow: inset 0 0 0 2px var(--brand); }
+  .day-cell.svatek{ background:var(--svatek-bg); color:var(--svatek-ink); }
+  .day-cell.prazdniny{ background:var(--prazdniny-bg); color:var(--prazdniny-ink); }
+  .dot-row{ display:flex; gap:2px; height:5px; }
+  .dot{ width:5px; height:5px; border-radius:50%; }
+
+  .legend{ display:flex; gap:12px; justify-content:center; margin:10px 0 4px; font-size:10.5px; color:var(--ink-soft); flex-wrap:wrap; }
+  .legend span{ display:inline-flex; align-items:center; gap:4px; }
+  .legend i{ width:9px; height:9px; border-radius:3px; display:inline-block; }
+  .hint{ text-align:center; color:var(--ink-soft); font-size:12px; margin:12px 0 2px; }
+
+  .holiday-chips{ display:flex; flex-direction:column; gap:6px; margin:10px 0 4px; }
+  .holiday-chip{ display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:700; }
+  .holiday-chip.svatek{ background:var(--svatek-bg); color:var(--svatek-ink); }
+  .holiday-chip.prazdniny{ background:var(--prazdniny-bg); color:var(--prazdniny-ink); }
+
+  .agenda-list{ display:flex; flex-direction:column; gap:7px; }
+  .agenda-row{ display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:13px; cursor:pointer;
+    background:var(--surface); box-shadow:0 2px 8px rgba(32,30,59,0.05); border-left:4px solid var(--brand); }
+  .agenda-row:active{ transform:scale(0.98); }
+  .agenda-date{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:12px; color:var(--ink-soft); min-width:30px; text-align:center; line-height:1.15; }
+  .agenda-date b{ display:block; font-size:15px; color:var(--ink); }
+  .agenda-text{ flex:1; font-size:13px; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .agenda-text .sub{ display:block; font-size:11px; font-weight:500; color:var(--ink-soft); }
+
+  .day-heading{ font-family:'Fredoka', sans-serif; font-size:19px; font-weight:700; margin:0 0 2px; text-transform:capitalize; }
+  .day-sub{ color:var(--ink-soft); font-size:13px; margin:0 0 10px; }
+  .holiday-banner{ padding:10px 13px; border-radius:var(--radius-md); font-size:12.5px; font-weight:700; margin-bottom:8px; }
+  .holiday-banner.svatek{ background:var(--svatek-bg); color:var(--svatek-ink); }
+  .holiday-banner.prazdniny{ background:var(--prazdniny-bg); color:var(--prazdniny-ink); }
+  .holiday-banner.nameday{ background:#FFE2F1; color:#B3206B; }
+  .holiday-banner.birthday{ background:#FFF6D6; color:#8A6D00; }
+
+  .section-label{ font-size:11.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.4px; margin:12px 0 6px; display:flex; justify-content:space-between; align-items:center; }
+  .section-label:first-child{ margin-top:0; }
+  .add-link{ border:none; background:var(--brand-soft); color:var(--brand); font-size:11px; font-weight:700; padding:5px 10px; border-radius:20px; cursor:pointer; text-transform:none; letter-spacing:0; }
+
+  .mini-schedule{ display:flex; flex-direction:column; gap:6px; }
+  .lesson-row{
+    display:flex; align-items:center; gap:10px; padding:8px 11px; border-radius:14px; cursor:pointer;
+    border-left:4px solid var(--line); background:var(--surface); box-shadow:0 2px 7px rgba(32,30,59,0.06);
+    transition:transform .08s;
+  }
+  .lesson-row:active{ transform:scale(0.98); }
+  .lesson-time-badge{ display:flex; flex-direction:column; align-items:center; justify-content:center; width:44px; flex-shrink:0; gap:2px; }
+  .lesson-num{
+    min-width:26px; padding:3px 6px; border-radius:8px; background:var(--brand-soft); color:var(--brand);
+    font-family:'Fredoka',sans-serif; font-size:11.5px; font-weight:700; text-align:center;
+  }
+  .lesson-time{ font-size:8.5px; font-weight:700; color:var(--ink-soft); letter-spacing:0.2px; }
+  .lesson-subject{ flex:1; font-size:14.5px; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lesson-subject.empty{ color:#C9C7DE; font-weight:500; font-style:italic; }
+  .lesson-subject.done{ text-decoration:line-through; color:var(--ink-soft); }
+
+  .task-list{ display:flex; flex-direction:column; gap:8px; }
+  .task-card{
+    border-radius:var(--radius-md); padding:10px 11px; display:flex; align-items:center; gap:10px;
+    box-shadow:0 2px 7px rgba(32,30,59,0.06); border-left:5px solid var(--brand);
+  }
+  .check{
+    width:24px; height:24px; min-width:24px; border-radius:50%; border:2px solid rgba(0,0,0,0.15);
+    background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; font-size:13px; flex-shrink:0;
+  }
+  .check.done{ background:var(--brand); border-color:var(--brand); }
+  .task-body{ flex:1; min-width:0; cursor:pointer; }
+  .task-title{ font-size:15px; font-weight:700; line-height:1.3; word-break:break-word; }
+  .task-title.done{ text-decoration:line-through; color:var(--ink-soft); }
+  .task-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .note-badge{ font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; color:#fff; }
+  .del-btn{ border:none; background:none; color:#C9C7DE; font-size:18px; line-height:1; padding:4px 2px; cursor:pointer; flex-shrink:0; }
+  .del-btn:active{ color:var(--danger); }
+
+  .empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); background:var(--surface); border-radius:var(--radius-md); font-size:14px; }
+  .empty-state strong{ display:block; color:var(--ink); font-family:'Fredoka',sans-serif; font-size:15px; margin-bottom:4px; font-weight:700;}
+
+  .tabbar{ position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); z-index:15; }
+  .tabbar-inner{
+    width:100%; max-width:340px; display:flex; background:var(--surface); border-radius:18px; padding:6px; gap:6px;
+    box-shadow:0 6px 22px rgba(108,76,241,0.18);
+  }
+  .tab-btn{ flex:1; border:none; background:none; padding:8px 0 6px; border-radius:14px; font-family:'Inter', sans-serif; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--ink-soft); }
+  .tab-btn .ic{ font-size:20px; }
+  .tab-btn .tl{ font-size:10px; font-weight:700; }
+  .tab-btn.active{ background:linear-gradient(135deg, var(--brand), var(--brand2)); color:#fff; }
+
+  .fab{
+    position:fixed; bottom:88px; left:50%; transform:translateX(calc(-50% + 100px));
+    width:57px; height:57px; border-radius:50%; background:linear-gradient(135deg, var(--brand), var(--brand2)); color:#fff; font-size:27px; border:none;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(108,76,241,0.45); cursor:pointer; z-index:20;
+  }
+  .fab.hidden{ display:none; }
+  .fab:active{ transform:translateX(calc(-50% + 100px)) scale(0.93); }
+
+  .overlay{ position:fixed; inset:0; background:rgba(32,30,59,0.45); display:none; align-items:flex-end; justify-content:center; }
+  .overlay.open{ display:flex; }
+  #addOverlay, #birthdayOverlay, #matchOverlay, #subjectOverlay{ z-index:40; }
+  #dayOverlay{ z-index:30; }
+  #lessonOverlay{ z-index:34; }
+  .sheet{ width:100%; max-width:430px; max-height:94vh; overflow-y:auto; background:var(--bg1); border-radius:26px 26px 0 0; padding:16px 16px 20px; animation:up 0.18s ease-out; }
+  @keyframes up{ from{ transform:translateY(24px); opacity:0;} to{ transform:translateY(0); opacity:1;} }
+  .sheet-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .sheet-title{ font-family:'Fredoka', sans-serif; font-size:19px; font-weight:700; }
+  .sheet-sub{ font-size:12.5px; color:var(--ink-soft); margin-top:-12px; margin-bottom:14px; text-transform:capitalize; }
+  .close-btn{ border:none; background:var(--surface); width:32px; height:32px; border-radius:50%; font-size:16px; color:var(--ink-soft); cursor:pointer; flex-shrink:0; }
+  .field-label{ font-size:12px; font-weight:700; color:var(--ink-soft); margin:14px 0 6px; }
+  .field-label:first-of-type{ margin-top:0; }
+  .field-row{ display:flex; gap:10px; }
+  .field-row > div{ flex:1; }
+  input[type="text"], input[type="time"], input[type="date"]{
+    width:100%; border:none; background:var(--surface); border-radius:var(--radius-md); padding:13px 14px;
+    font-size:15px; font-family:'Inter', sans-serif; color:var(--ink); box-shadow:0 2px 8px rgba(32,30,59,0.04);
+  }
+  input:focus{ outline:2px solid var(--brand); }
+  .cat-row{ display:flex; justify-content:space-between; gap:6px; flex-wrap:wrap; }
+  .cat-choice{ flex:1 1 13%; display:flex; flex-direction:column; align-items:center; gap:6px; border:none; background:none; cursor:pointer; padding:4px 0; }
+  .cat-swatch{ width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:17px; box-shadow:0 0 0 3px transparent; }
+  .cat-choice.active .cat-swatch{ box-shadow:0 0 0 3px var(--bg1), 0 0 0 5px currentColor; }
+  .cat-label{ font-size:10px; color:var(--ink-soft); font-weight:700; text-align:center; }
+  .save-btn{
+    width:100%; margin-top:20px; border:none; background:linear-gradient(135deg, var(--brand), var(--brand2)); color:#fff; font-family:'Inter', sans-serif;
+    font-weight:700; font-size:15px; padding:15px; border-radius:var(--radius-md); cursor:pointer; box-shadow:0 8px 18px rgba(108,76,241,0.3);
+  }
+  .save-btn:active{ transform:scale(0.98); }
+  .del-full-btn{
+    width:100%; margin-top:10px; border:none; background:none; color:var(--danger); font-family:'Inter',sans-serif;
+    font-weight:700; font-size:13px; padding:10px; cursor:pointer;
+  }
+
+  .note-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .note-choice{ border:2px solid var(--line); background:var(--surface); border-radius:var(--radius-md); padding:12px 6px; font-family:'Inter', sans-serif; font-weight:700; font-size:13px; color:var(--ink-soft); cursor:pointer; }
+  .note-choice.active[data-type="none"]{ border-color:var(--ink-soft); color:var(--ink); background:var(--brand-soft); }
+  .note-choice.active[data-type="domaci"]{ border-color:var(--leisure); color:#8A5B00; background:#FFF4E0; }
+  .note-choice.active[data-type="test"]{ border-color:var(--danger); color:var(--danger); background:#FEECF1; }
+  .note-choice.active[data-type="zkouseni"]{ border-color:var(--work); color:var(--work); background:#E8F0FF; }
+
+  /* Settings */
+  .settings-card{ background:var(--surface); border-radius:var(--radius-md); padding:16px; box-shadow:0 4px 14px rgba(108,76,241,0.08); margin-bottom:14px; }
+  .settings-card-title{ font-family:'Fredoka',sans-serif; font-weight:700; font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .settings-row{ display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-top:1px solid var(--line); }
+  .settings-row:first-child{ border-top:none; }
+  .settings-row-label{ font-size:14px; font-weight:600; flex:1; padding-right:10px; }
+  .settings-row-sub{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .switch{ width:46px; height:27px; border-radius:16px; border:none; background:#DAD7EE; position:relative; cursor:pointer; flex-shrink:0; }
+  .switch.on{ background:linear-gradient(135deg, var(--brand), var(--brand2)); }
+  .switch .knob{ position:absolute; top:3px; left:3px; width:21px; height:21px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,0.25); }
+  .switch.on .knob{ left:22px; }
+  .segmented{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .seg-btn{ flex:1 1 28%; border:2px solid var(--line); background:var(--surface); color:var(--ink-soft); font-family:'Inter',sans-serif; font-weight:700; font-size:11.5px; padding:9px 4px; border-radius:10px; cursor:pointer; }
+  #agFilterSeg .seg-btn{ flex:1 1 45%; font-size:11px; padding:9px 6px; }
+  .seg-btn.active{ border-color:var(--brand); color:var(--brand); background:var(--brand-soft); }
+  .perm-status{ font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; }
+  .perm-status.granted{ background:#DFF6EC; color:#0E9A6A; }
+  .perm-status.denied{ background:#FFE1E8; color:#C22B52; }
+  .perm-status.default{ background:var(--brand-soft); color:var(--brand); }
+  .note-box{ font-size:12px; color:var(--ink-soft); line-height:1.5; background:var(--brand-soft); padding:12px 14px; border-radius:var(--radius-md); }
+  .ghost-btn-sm{ border:none; background:var(--brand-soft); color:var(--brand); font-family:'Inter',sans-serif; font-weight:700; font-size:12px; padding:8px 13px; border-radius:20px; cursor:pointer; }
+
+  .day-toggle{ display:flex; align-items:center; justify-content:space-between; padding:10px 2px; cursor:pointer; border-top:1px solid var(--line); }
+  .day-toggle:first-child{ border-top:none; }
+  .day-toggle-label{ font-weight:700; font-size:13.5px; }
+  .day-toggle-chev{ color:var(--ink-soft); font-size:12px; transition:transform .15s; }
+  .day-toggle-chev.open{ transform:rotate(90deg); }
+  .day-toggle-body{ display:none; padding-bottom:8px; }
+  .day-toggle-body.open{ display:block; }
+
+  .simple-list{ display:flex; flex-direction:column; gap:8px; }
+  .simple-row{ display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--brand-soft); border-radius:12px; cursor:pointer; }
+  .simple-row-main{ flex:1; min-width:0; }
+  .simple-row-title{ font-weight:700; font-size:13.5px; }
+  .simple-row-sub{ font-size:11.5px; color:var(--ink-soft); }
+  .name-chip{ display:inline-block; background:#FFE2F1; color:#B3206B; font-size:11px; font-weight:700; padding:4px 9px; border-radius:14px; margin:0 5px 5px 0; }
+
+  .loading{ text-align:center; color:var(--ink-soft); padding:60px 0; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loading" id="loading">Načítání plánovače…</div>
+</div>
+
+<script>
+(function(){
+
+const CATS = {
+  work:     { label: 'Práce',      hex:'#2D6CFF', icon:'💼' },
+  personal: { label: 'Osobní',     hex:'#FF4D8D', icon:'💖' },
+  health:   { label: 'Zdraví',     hex:'#12B886', icon:'🌿' },
+  leisure:  { label: 'Volný čas',  hex:'#FFB020', icon:'🎨' },
+  skola:    { label: 'Škola',      hex:'#17B6CE', icon:'📚' },
+  sport:    { label: 'Fotbal',     hex:'#FF6B35', icon:'⚽' },
+  doctor:   { label: 'Lékař',      hex:'#F94892', icon:'🏥' },
+  shopping: { label: 'Nákupy',     hex:'#00B8A9', icon:'🛒' },
+  family:   { label: 'Rodina',     hex:'#845EC2', icon:'👨‍👩‍👧' },
+  travel:   { label: 'Cestování',  hex:'#4C6EF5', icon:'✈️' },
+  party:    { label: 'Oslava',     hex:'#FF9F1C', icon:'🎉' },
+  music:    { label: 'Hudba',      hex:'#D6336C', icon:'🎵' },
+  other:    { label: 'Ostatní',    hex:'#6C4CF1', icon:'✨' },
+};
+const CAT_ORDER = ['work','personal','health','leisure','skola','sport','doctor','shopping','family','travel','party','music','other'];
+const NOTE_COLORS = { domaci:'#FFB020', test:'#EF476F', zkouseni:'#2D6CFF' };
+const NOTE_LABELS = { domaci:'Úkol', test:'Test', zkouseni:'Zkoušení' };
+const NOTE_LABELS_FULL = { none:'Nic', domaci:'Domácí úkol', test:'Test', zkouseni:'Zkoušení' };
+
+const MONTHS = ['leden','únor','březen','duben','květen','červen','červenec','srpen','září','říjen','listopad','prosinec'];
+const MONTHS_GEN = ['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
+const WEEKDAYS_SHORT = ['Po','Út','St','Čt','Pá','So','Ne'];
+const WEEKDAYS_FULL = ['pondělí','úterý','středa','čtvrtek','pátek','sobota','neděle'];
+
+const PERIODS = [
+  {key:'0',  label:'0. hodina',           time:'7:15–8:00'},
+  {key:'1',  label:'1. hodina',           time:'8:05–8:50'},
+  {key:'2',  label:'2. hodina',           time:'8:55–9:40'},
+  {key:'3',  label:'3. hodina',           time:'10:00–10:45'},
+  {key:'4',  label:'4. hodina',           time:'10:50–11:35'},
+  {key:'5',  label:'5. hodina',           time:'11:45–12:30'},
+  {key:'5P', label:'5. hodina (dělená)',  time:'12:05–12:50'},
+  {key:'6',  label:'6. hodina',           time:'12:35–13:20'},
+  {key:'6P', label:'6. hodina (dělená)',  time:'13:00–13:45'},
+  {key:'7',  label:'7. hodina',           time:'13:25–14:10'},
+  {key:'7P', label:'7. hodina (dělená)',  time:'13:50–14:35'},
+  {key:'9',  label:'9. hodina',           time:'15:05–15:50'},
+];
+
+const SEED_VERSION = 2;
+const SCHEDULE_SEED = {
+  '0-1':'CJL', '0-2':'CHE', '0-3':'ANJ1', '0-4':'NEJ1', '0-5P':'MAT', '0-6P':'CAD1', '0-7P':'CAD1',
+  '1-1':'CHE', '1-2':'FSE', '1-3':'MAT', '1-4':'FYZ', '1-5':'ANJ1', '1-6':'CJL',
+  '2-1':'NEJ1', '2-2':'MSE1', '2-3':'CJL', '2-4':'FYZ', '2-5P':'ARC', '2-6P':'ARC', '2-7P':'ARC',
+  '3-1':'ICT1', '3-2':'ICT1', '3-3':'MAT', '3-4':'ANJ1', '3-5':'DEG1', '3-6':'DEG1', '3-9':'TEV',
+  '4-0':'ARC', '4-1':'FYZ', '4-2':'OBN', '4-3':'ANJ1', '4-4':'MAT', '4-5':'CAD', '4-6':'TEV1', '4-7':'TEV1',
+};
+
+const HOLIDAYS = [
+  {start:'2026-09-28', end:'2026-09-28', label:'Den české státnosti', type:'svatek'},
+  {start:'2026-10-28', end:'2026-10-28', label:'Den vzniku samostatného československého státu', type:'svatek'},
+  {start:'2026-10-29', end:'2026-10-30', label:'Podzimní prázdniny', type:'prazdniny'},
+  {start:'2026-11-17', end:'2026-11-17', label:'Den boje za svobodu a demokracii', type:'svatek'},
+  {start:'2026-12-23', end:'2027-01-03', label:'Vánoční prázdniny', type:'prazdniny'},
+  {start:'2027-01-01', end:'2027-01-01', label:'Nový rok', type:'svatek'},
+  {start:'2027-01-29', end:'2027-01-29', label:'Pololetní prázdniny', type:'prazdniny'},
+  {start:'2027-02-22', end:'2027-02-28', label:'Jarní prázdniny (okres Hodonín)', type:'prazdniny'},
+  {start:'2027-03-25', end:'2027-03-25', label:'Velikonoční prázdniny', type:'prazdniny'},
+  {start:'2027-03-26', end:'2027-03-26', label:'Velký pátek', type:'svatek'},
+  {start:'2027-03-29', end:'2027-03-29', label:'Velikonoční pondělí', type:'svatek'},
+  {start:'2027-05-01', end:'2027-05-01', label:'Svátek práce', type:'svatek'},
+  {start:'2027-05-08', end:'2027-05-08', label:'Den vítězství', type:'svatek'},
+  {start:'2027-07-01', end:'2027-08-31', label:'Hlavní prázdniny', type:'prazdniny'},
+];
+
+const MATCHES_SEED = [
+  {date:'2026-08-16', time:'16:30', title:'Vnorovy – Mutěnice'},
+  {date:'2026-08-22', time:'16:30', title:'Dubňany – Vnorovy'},
+  {date:'2026-08-30', time:'16:30', title:'Vnorovy – Veselí n. Moravou'},
+  {date:'2026-09-05', time:'16:00', title:'Židlochovice – Vnorovy'},
+  {date:'2026-09-12', time:'16:00', title:'Vnorovy – Velké Pavlovice'},
+  {date:'2026-09-20', time:'10:15', title:'Kyjov – Vnorovy'},
+  {date:'2026-09-27', time:'15:30', title:'Vnorovy – Lysovice'},
+  {date:'2026-10-03', time:'15:00', title:'Šardice – Vnorovy'},
+  {date:'2026-10-10', time:'15:00', title:'Vnorovy – START Brno'},
+  {date:'2026-10-17', time:'14:30', title:'Vnorovy – Milotice'},
+  {date:'2026-10-25', time:'14:30', title:'Hroznová Lhota – Vnorovy'},
+  {date:'2026-10-31', time:'14:00', title:'Vojkovice – Vnorovy'},
+  {date:'2026-11-07', time:'14:00', title:'Vnorovy – Dambořice'},
+];
+
+// Svátky (jmeniny) podle českého kalendáře - jen jména, která jsi chtěl sledovat
+const NAME_DAYS = [
+  {name:'Vladislav', date:'01-18'},
+  {name:'Veronika',  date:'02-07'},
+  {name:'Josef',     date:'03-19'},
+  {name:'Tomáš',     date:'03-07'},
+  {name:'Jakub',     date:'07-25'},
+  {name:'Magdalena', date:'07-22'},
+  {name:'Radim',     date:'08-25'},
+  {name:'Dominik',   date:'08-04'},
+  {name:'Marie',     date:'09-12'},
+  {name:'Michal',    date:'09-29'},
+  {name:'Eliška',    date:'10-05'},
+  {name:'Lukáš',     date:'10-18'},
+  {name:'Karel',     date:'11-04'},
+  {name:'Tobiáš',    date:'11-02'},
+  {name:'Alžběta',   date:'11-19'},
+  {name:'Martin',    date:'11-11'},
+  {name:'Kateřina',  date:'11-25'},
+  {name:'Ondřej',    date:'11-30'},
+  {name:'Barbora',   date:'12-04'},
+  {name:'Lucie',     date:'12-13'},
+  {name:'Šimon',     date:'12-22'},
+  {name:'Adam',      date:'12-24'},
+  {name:'David',     date:'12-30'},
+  {name:'Jana',      date:'05-24'},
+  {name:'Petr',      date:'02-22'},
+  {name:'Jan',       date:'06-24'},
+];
+
+const SETTINGS_DEFAULT = { darkMode:false };
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function toKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function mdKey(d){ return pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function sameDay(a,b){ return toKey(a)===toKey(b); }
+function mondayOf(d){ const nd=new Date(d); const wd=(nd.getDay()+6)%7; nd.setDate(nd.getDate()-wd); nd.setHours(0,0,0,0); return nd; }
+function getHolidays(dateKey){ return HOLIDAYS.filter(h=> dateKey>=h.start && dateKey<=h.end); }
+function primaryHoliday(dateKey){ const list=getHolidays(dateKey); if(!list.length) return null; return list.find(h=>h.type==='prazdniny') || list[0]; }
+function hexA(hex, alpha){ const h=hex.replace('#',''); const r=parseInt(h.substring(0,2),16), g=parseInt(h.substring(2,4),16), b=parseInt(h.substring(4,6),16); return `rgba(${r},${g},${b},${alpha})`; }
+const SUBJECT_PALETTE = ['#2D6CFF','#FF4D8D','#12B886','#F4A100','#9B6BFF','#17B6CE','#FF6B35','#F94892','#00B8A9','#845EC2','#FF9F1C','#4C6EF5'];
+function subjectColor(code){
+  if(!code) return '#C7C4E0';
+  let h=0; for(let i=0;i<code.length;i++) h = (h*31 + code.charCodeAt(i)) % 997;
+  return SUBJECT_PALETTE[h % SUBJECT_PALETTE.length];
+}
+function namedaysFor(dateKey){ const md = dateKey.slice(5); return NAME_DAYS.filter(n=>n.date===md); }
+function birthdaysFor(dateKey){ const md = dateKey.slice(5); return birthdays.filter(b=>b.date===md); }
+
+let tasks = [];
+let subjects = {};
+let meta = {};
+let settings = Object.assign({}, SETTINGS_DEFAULT);
+let birthdays = [];
+let currentMonth = new Date(); currentMonth.setDate(1);
+let selectedDate = new Date();
+let selectedCategory = 'work';
+let currentView = 'cal';
+let lessonCtx = null;
+let matchCtx = null;
+let birthdayCtx = null;
+let subjectCtx = null;
+let lessonNoteType = 'none';
+const openDaySections = new Set();
+
+// Storage: uses Claude's built-in persistent storage when available (chat preview),
+// falls back to localStorage when running standalone (installed PWA / own hosting).
+const LS_PREFIX = 'vnorovy-planovac:';
+const hasClaudeStorage = (typeof window!=='undefined') && !!window.storage && typeof window.storage.get==='function';
+async function lsGet(key){
+  if(hasClaudeStorage){
+    try{ return await window.storage.get(key, false); }catch(e){ /* fall through to localStorage */ }
+  }
+  try{ const raw = localStorage.getItem(LS_PREFIX+key); return raw===null ? null : { value: raw }; }
+  catch(e){ return null; }
+}
+async function lsSet(key, value){
+  if(hasClaudeStorage){
+    try{ return await window.storage.set(key, value, false); }catch(e){ /* fall through to localStorage */ }
+  }
+  try{ localStorage.setItem(LS_PREFIX+key, value); return { value }; }
+  catch(e){ return null; }
+}
+
+async function loadAll(){
+  try{ const res = await lsGet('tasks'); tasks = res && res.value ? JSON.parse(res.value) : []; }catch(e){ tasks = []; }
+  try{ const res2 = await lsGet('schedule'); subjects = res2 && res2.value ? JSON.parse(res2.value) : null; }catch(e){ subjects = null; }
+  try{ const res3 = await lsGet('scheduleMeta'); meta = res3 && res3.value ? JSON.parse(res3.value) : {}; }catch(e){ meta = {}; }
+  try{ const res4 = await lsGet('settings'); settings = res4 && res4.value ? Object.assign({}, SETTINGS_DEFAULT, JSON.parse(res4.value)) : Object.assign({}, SETTINGS_DEFAULT); }catch(e){ settings = Object.assign({}, SETTINGS_DEFAULT); }
+  try{ const res5 = await lsGet('birthdays'); birthdays = res5 && res5.value ? JSON.parse(res5.value) : []; }catch(e){ birthdays = []; }
+  try{ const res6 = await lsGet('agendaFilters'); agendaFilters = res6 && res6.value ? Object.assign({}, AGENDA_FILTERS_DEFAULT, JSON.parse(res6.value)) : Object.assign({}, AGENDA_FILTERS_DEFAULT); }catch(e){ agendaFilters = Object.assign({}, AGENDA_FILTERS_DEFAULT); }
+
+  let changed = false;
+  if(!subjects){ subjects = Object.assign({}, SCHEDULE_SEED); meta.seedVersion = SEED_VERSION; changed = true; }
+  else if(!meta.seedVersion || meta.seedVersion < SEED_VERSION){
+    subjects['1-6'] = 'CJL';
+    delete subjects['3-6P']; subjects['3-6'] = 'DEG1';
+    delete subjects['4-5P']; delete subjects['4-6P']; delete subjects['4-7P'];
+    subjects['4-5'] = 'CAD'; subjects['4-6'] = 'TEV1'; subjects['4-7'] = 'TEV1';
+    meta.seedVersion = SEED_VERSION; changed = true;
+  }
+  if(!meta.matchesSeeded){
+    MATCHES_SEED.forEach(m=>{
+      const id = 'match-'+m.date;
+      if(!tasks.find(t=>t.id===id)) tasks.push({ id, date:m.date, time:m.time, title:m.title, category:'sport', done:false, result:'' });
+    });
+    meta.matchesSeeded = true; changed = true;
+  }
+  if(changed){ await saveTasks(); await saveSchedule(); await saveMeta(); }
+}
+async function saveTasks(){ try{ await lsSet('tasks', JSON.stringify(tasks)); }catch(e){} }
+async function saveSchedule(){ try{ await lsSet('schedule', JSON.stringify(subjects)); }catch(e){} }
+async function saveMeta(){ try{ await lsSet('scheduleMeta', JSON.stringify(meta)); }catch(e){} }
+async function saveSettings(){ try{ await lsSet('settings', JSON.stringify(settings)); }catch(e){} }
+async function saveBirthdays(){ try{ await lsSet('birthdays', JSON.stringify(birthdays)); }catch(e){} }
+async function saveAgendaFilters(){ try{ await lsSet('agendaFilters', JSON.stringify(agendaFilters)); }catch(e){} }
+
+function buildShell(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="view" id="viewCal">
+      <div class="topbar">
+        <button class="nav-btn" id="prevBtn">‹</button>
+        <div class="month-wrap">
+          <div class="month-label" id="monthLabel"></div>
+          <button class="today-link" id="todayBtn">Dnes</button>
+        </div>
+        <button class="nav-btn" id="nextBtn">›</button>
+      </div>
+      <div class="weekdays">${WEEKDAYS_SHORT.map(w=>`<div>${w}</div>`).join('')}</div>
+      <div class="calendar" id="calendar"></div>
+      <div class="legend">
+        <span><i style="background:var(--svatek-bg)"></i>svátek</span>
+        <span><i style="background:var(--prazdniny-bg)"></i>prázdniny</span>
+        <span><i style="background:var(--nameday)"></i>jmeniny</span>
+        <span><i style="background:var(--birthday)"></i>narozeniny</span>
+      </div>
+      <p class="hint">Klepni na den — rozvrh i úkoly se otevřou v okně.</p>
+    </div>
+
+    <div class="view" id="viewAgenda">
+      <div class="topbar">
+        <button class="nav-btn" id="agPrevBtn">‹</button>
+        <div class="month-wrap">
+          <div class="month-label" id="agLabel" style="font-size:18px;"></div>
+        </div>
+        <button class="nav-btn" id="agNextBtn">›</button>
+      </div>
+      <div class="segmented" id="agModeSeg" style="margin-bottom:12px;">
+        <button class="seg-btn" data-val="month">Měsíc</button>
+        <button class="seg-btn" data-val="week">Týden</button>
+      </div>
+      <div class="field-label" style="margin-bottom:6px;">Co chci vidět</div>
+      <div class="segmented" id="agFilterSeg" style="margin-bottom:14px;">
+        <button class="seg-btn" data-filter="skola">📚 Škola</button>
+        <button class="seg-btn" data-filter="sport">⚽ Zápasy</button>
+        <button class="seg-btn" data-filter="events">🗓️ Události</button>
+        <button class="seg-btn" data-filter="people">🎂 Svátky a narozeniny</button>
+        <button class="seg-btn" data-filter="holidays">🏛️ Státní svátky a prázdniny</button>
+      </div>
+      <div class="holiday-chips" id="agHolidayChips"></div>
+      <div class="agenda-list" id="agendaList"></div>
+    </div>
+
+    <div class="view" id="viewSet">
+      <div class="page-title">⚙️ Nastavení</div>
+
+      <div class="settings-card">
+        <div class="settings-row" style="border:none; padding-top:0;">
+          <div>
+            <div class="settings-row-label">🌙 Tmavý režim</div>
+            <div class="settings-row-sub">Přepni vzhled appky</div>
+          </div>
+          <button class="switch" id="swDark"><span class="knob"></span></button>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-row" style="border:none; padding-top:0;">
+          <div class="settings-card-title" style="margin:0;">📚 Rozvrh 4.A</div>
+          <button class="add-link" id="scheduleHint">jak upravit?</button>
+        </div>
+        <div id="scheduleEditor"></div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-row" style="border:none; padding-top:0;">
+          <div class="settings-card-title" style="margin:0;">⚽ Zápasy Vnorovy</div>
+          <button class="add-link" id="addMatchBtn">+ přidat</button>
+        </div>
+        <div class="simple-list" id="matchList"></div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-row" style="border:none; padding-top:0;">
+          <div class="settings-card-title" style="margin:0;">🎂 Narozeniny</div>
+          <button class="add-link" id="addBirthdayBtn">+ přidat</button>
+        </div>
+        <div class="simple-list" id="birthdayList"></div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-title">🎉 Sledovaná jména (svátky)</div>
+        <div>${NAME_DAYS.slice().sort((a,b)=>a.name.localeCompare(b.name,'cs')).map(n=>`<span class="name-chip">${n.name}</span>`).join('')}</div>
+      </div>
+    </div>
+
+    <button class="fab" id="fabBtn">+</button>
+
+    <div class="tabbar">
+      <div class="tabbar-inner">
+        <button class="tab-btn" id="tabCal"><span class="ic">📅</span><span class="tl">Kalendář</span></button>
+        <button class="tab-btn" id="tabAgenda"><span class="ic">📋</span><span class="tl">Přehled</span></button>
+        <button class="tab-btn" id="tabSet"><span class="ic">⚙️</span><span class="tl">Nastavení</span></button>
+      </div>
+    </div>
+
+    <div class="overlay" id="dayOverlay">
+      <div class="sheet">
+        <div class="sheet-head">
+          <div>
+            <h2 class="day-heading" id="dayHeading"></h2>
+            <p class="day-sub" id="daySub" style="margin:0;"></p>
+          </div>
+          <button class="close-btn" id="dayCloseBtn">✕</button>
+        </div>
+        <div id="dayContent"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="addOverlay">
+      <div class="sheet">
+        <div class="sheet-head">
+          <div class="sheet-title" id="addTitle">Nový úkol / událost</div>
+          <button class="close-btn" id="closeBtn">✕</button>
+        </div>
+        <div class="field-label">Co je potřeba udělat</div>
+        <input type="text" id="titleInput" placeholder="Např. Zubní prohlídka" maxlength="80">
+        <div class="field-row">
+          <div>
+            <div class="field-label" id="dateFromLabel">Od</div>
+            <input type="date" id="dateFromInput">
+          </div>
+          <div id="dateToWrap">
+            <div class="field-label">Do (pro víc dní)</div>
+            <input type="date" id="dateToInput">
+          </div>
+        </div>
+        <div class="field-label">Čas (nepovinné)</div>
+        <input type="time" id="timeInput">
+        <div class="field-label">Kategorie</div>
+        <div class="cat-row" id="catRow"></div>
+        <button class="save-btn" id="saveBtn">Uložit</button>
+        <button class="del-full-btn" id="addDelBtn" style="display:none;">Smazat</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="lessonOverlay">
+      <div class="sheet">
+        <div class="sheet-head">
+          <div class="sheet-title" id="lessonTitle">Hodina</div>
+          <button class="close-btn" id="lessonCloseBtn">✕</button>
+        </div>
+        <div class="sheet-sub" id="lessonSub"></div>
+        <div class="field-label">Předmět</div>
+        <input type="text" id="lessonSubject" placeholder="Např. Matematika" maxlength="40">
+        <div class="field-label">Máme něco zapsat?</div>
+        <div class="note-row" id="noteRow">
+          <button class="note-choice" data-type="none">Nic</button>
+          <button class="note-choice" data-type="domaci">Domácí úkol</button>
+          <button class="note-choice" data-type="test">Test</button>
+          <button class="note-choice" data-type="zkouseni">Zkoušení</button>
+        </div>
+        <div class="field-label">Z čeho to je (nepovinné)</div>
+        <input type="text" id="lessonNote" placeholder="Např. kapitola 5, str. 32" maxlength="60">
+        <button class="save-btn" id="lessonSaveBtn">Uložit</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="subjectOverlay">
+      <div class="sheet">
+        <div class="sheet-head">
+          <div class="sheet-title" id="subjectTitle">Hodina</div>
+          <button class="close-btn" id="subjectCloseBtn">✕</button>
+        </div>
+        <div class="field-label">Předmět</div>
+        <input type="text" id="subjectInput" placeholder="Např. Matematika" maxlength="40">
+        <button class="save-btn" id="subjectSaveBtn">Uložit</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="matchOverlay">
+      <div class="sheet">
+        <div class="sheet-head">
+          <div class="sheet-title" id="matchTitle">Zápas</div>
+          <button class="close-btn" id="matchCloseBtn">✕</button>
+        </div>
+        <div class="field-label">Zápas</div>
+        <input type="text" id="matchTitleInput" placeholder="Např. Vnorovy – Mutěnice" maxlength="60">
+        <div class="field-row">
+          <div>
+            <div class="field-label">Datum</div>
+            <input type="date" id="matchDateInput">
+          </div>
+          <div>
+            <div class="field-label">Výkop</div>
+            <input type="time" id="matchTimeInput">
+          </div>
+        </div>
+        <div class="field-label">Výsledek (nepovinné)</div>
+        <input type="text" id="matchResultInput" placeholder="např. 2:1" maxlength="20">
+        <button class="save-btn" id="matchSaveBtn">Uložit</button>
+        <button class="del-full-btn" id="matchDelBtn" style="display:none;">Smazat zápas</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="birthdayOverlay">
+      <div class="sheet">
+        <div class="sheet-head">
+          <div class="sheet-title" id="birthdayTitle">Narozeniny</div>
+          <button class="close-btn" id="birthdayCloseBtn">✕</button>
+        </div>
+        <div class="field-label">Jméno</div>
+        <input type="text" id="birthdayNameInput" placeholder="Např. Babička Věra" maxlength="40">
+        <div class="field-label">Datum narození</div>
+        <input type="date" id="birthdayDateInput">
+        <button class="save-btn" id="birthdaySaveBtn">Uložit</button>
+        <button class="del-full-btn" id="birthdayDelBtn" style="display:none;">Smazat</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('prevBtn').onclick = ()=>{ currentMonth.setMonth(currentMonth.getMonth()-1); renderCalendar(); };
+  document.getElementById('nextBtn').onclick = ()=>{ currentMonth.setMonth(currentMonth.getMonth()+1); renderCalendar(); };
+  document.getElementById('todayBtn').onclick = ()=>{
+    const t = new Date();
+    currentMonth = new Date(t.getFullYear(), t.getMonth(), 1);
+    renderCalendar(); renderAgendaView();
+    openDayModal(toKey(t));
+  };
+  document.getElementById('fabBtn').onclick = ()=>openAddModal(selectedDate);
+  document.getElementById('closeBtn').onclick = closeAddModal;
+  document.getElementById('addOverlay').onclick = (e)=>{ if(e.target.id==='addOverlay') closeAddModal(); };
+  document.getElementById('saveBtn').onclick = handleSave;
+  document.getElementById('addDelBtn').onclick = handleAddDelete;
+
+  document.getElementById('dayCloseBtn').onclick = closeDayModal;
+  document.getElementById('dayOverlay').onclick = (e)=>{ if(e.target.id==='dayOverlay') closeDayModal(); };
+
+  document.getElementById('tabCal').onclick = ()=>switchView('cal');
+  document.getElementById('tabAgenda').onclick = ()=>switchView('agenda');
+  document.getElementById('tabSet').onclick = ()=>switchView('set');
+
+  document.getElementById('agPrevBtn').onclick = ()=>{
+    if(agendaMode==='month'){ currentMonth.setMonth(currentMonth.getMonth()-1); } else { agendaWeekStart.setDate(agendaWeekStart.getDate()-7); }
+    renderAgendaView();
+  };
+  document.getElementById('agNextBtn').onclick = ()=>{
+    if(agendaMode==='month'){ currentMonth.setMonth(currentMonth.getMonth()+1); } else { agendaWeekStart.setDate(agendaWeekStart.getDate()+7); }
+    renderAgendaView();
+  };
+  document.getElementById('agModeSeg').querySelectorAll('.seg-btn').forEach(btn=>{
+    btn.onclick = ()=>{ agendaMode = btn.dataset.val; renderAgendaView(); };
+  });
+  document.getElementById('agFilterSeg').querySelectorAll('.seg-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.filter;
+      agendaFilters[key] = !agendaFilters[key];
+      saveAgendaFilters();
+      renderAgendaView();
+    };
+  });
+  document.getElementById('scheduleHint').onclick = ()=>alert('Klepni na kterýkoliv den a hodinu — rovnou uvidíš a upravíš předmět. Test/úkol/zkoušení si zapisuješ přímo u konkrétního dne v Kalendáři.');
+
+  document.getElementById('lessonCloseBtn').onclick = closeLessonModal;
+  document.getElementById('lessonOverlay').onclick = (e)=>{ if(e.target.id==='lessonOverlay') closeLessonModal(); };
+  document.getElementById('lessonSaveBtn').onclick = handleLessonSave;
+  document.getElementById('noteRow').querySelectorAll('.note-choice').forEach(btn=>{
+    btn.onclick = ()=>{
+      lessonNoteType = btn.dataset.type;
+      document.querySelectorAll('.note-choice').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+  });
+
+  document.getElementById('subjectCloseBtn').onclick = ()=>document.getElementById('subjectOverlay').classList.remove('open');
+  document.getElementById('subjectOverlay').onclick = (e)=>{ if(e.target.id==='subjectOverlay') e.currentTarget.classList.remove('open'); };
+  document.getElementById('subjectSaveBtn').onclick = handleSubjectSave;
+
+  document.getElementById('addMatchBtn').onclick = ()=>openMatchModal(null);
+  document.getElementById('matchCloseBtn').onclick = closeMatchModal;
+  document.getElementById('matchOverlay').onclick = (e)=>{ if(e.target.id==='matchOverlay') closeMatchModal(); };
+  document.getElementById('matchSaveBtn').onclick = handleMatchSave;
+  document.getElementById('matchDelBtn').onclick = handleMatchDelete;
+
+  document.getElementById('addBirthdayBtn').onclick = ()=>openBirthdayModal(null);
+  document.getElementById('birthdayCloseBtn').onclick = closeBirthdayModal;
+  document.getElementById('birthdayOverlay').onclick = (e)=>{ if(e.target.id==='birthdayOverlay') closeBirthdayModal(); };
+  document.getElementById('birthdaySaveBtn').onclick = handleBirthdaySave;
+  document.getElementById('birthdayDelBtn').onclick = handleBirthdayDelete;
+
+  const catRow = document.getElementById('catRow');
+  catRow.innerHTML = CAT_ORDER.map(key=>{
+    const c = CATS[key];
+    return `<button class="cat-choice" data-cat="${key}" style="color:${c.hex}">
+      <span class="cat-swatch" style="background:${c.hex}">${c.icon}</span>
+      <span class="cat-label">${c.label}</span>
+    </button>`;
+  }).join('');
+  catRow.querySelectorAll('.cat-choice').forEach(btn=>{
+    btn.onclick = ()=>{
+      selectedCategory = btn.dataset.cat;
+      catRow.querySelectorAll('.cat-choice').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+  });
+
+  document.getElementById('swDark').onclick = ()=>{ settings.darkMode = !settings.darkMode; applyTheme(); renderSettings(); saveSettings(); };
+}
+
+function switchView(view){
+  currentView = view;
+  document.getElementById('viewCal').classList.toggle('active', view==='cal');
+  document.getElementById('viewAgenda').classList.toggle('active', view==='agenda');
+  document.getElementById('viewSet').classList.toggle('active', view==='set');
+  document.getElementById('tabCal').classList.toggle('active', view==='cal');
+  document.getElementById('tabAgenda').classList.toggle('active', view==='agenda');
+  document.getElementById('tabSet').classList.toggle('active', view==='set');
+  document.getElementById('fabBtn').classList.toggle('hidden', view!=='cal');
+  if(view==='set') renderSettings();
+  if(view==='agenda') renderAgendaView();
+}
+
+function renderSettings(){
+  document.getElementById('swDark').classList.toggle('on', settings.darkMode);
+
+  renderScheduleEditor();
+  renderMatchList();
+  renderBirthdayList();
+}
+
+function renderScheduleEditor(){
+  const el = document.getElementById('scheduleEditor');
+  let html = '';
+  WEEKDAYS_FULL.slice(0,5).forEach((name, wd)=>{
+    const isOpen = openDaySections.has(wd);
+    html += `<div class="day-toggle" data-wd="${wd}">
+      <span class="day-toggle-label" style="text-transform:capitalize;">${name}</span>
+      <span class="day-toggle-chev ${isOpen?'open':''}">›</span>
+    </div>
+    <div class="day-toggle-body ${isOpen?'open':''}" data-wdbody="${wd}">
+      <div class="mini-schedule">${PERIODS.map(p=>{
+        const subj = subjects[wd+'-'+p.key] || '';
+        return `<div class="lesson-row" data-wd="${wd}" data-period="${p.key}">
+          <span class="lesson-num">${p.key}</span>
+          <span class="lesson-subject ${subj?'':'empty'}">${subj?escapeHtml(subj):'Přidat předmět'}</span>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+  el.querySelectorAll('.day-toggle').forEach(t=>{
+    t.onclick = ()=>{
+      const wd = parseInt(t.dataset.wd);
+      if(openDaySections.has(wd)) openDaySections.delete(wd); else openDaySections.add(wd);
+      renderScheduleEditor();
+    };
+  });
+  el.querySelectorAll('.lesson-row').forEach(row=>{
+    row.onclick = ()=> openSubjectModal(parseInt(row.dataset.wd), row.dataset.period);
+  });
+}
+
+function openSubjectModal(wd, periodKey){
+  subjectCtx = { wd, periodKey };
+  const per = PERIODS.find(p=>p.key===periodKey);
+  document.getElementById('subjectTitle').textContent = WEEKDAYS_FULL[wd].charAt(0).toUpperCase()+WEEKDAYS_FULL[wd].slice(1)+' · '+per.label;
+  document.getElementById('subjectInput').value = subjects[wd+'-'+periodKey] || '';
+  document.getElementById('subjectOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('subjectInput').focus(), 50);
+}
+async function handleSubjectSave(){
+  const { wd, periodKey } = subjectCtx;
+  const val = document.getElementById('subjectInput').value.trim();
+  if(val) subjects[wd+'-'+periodKey] = val; else delete subjects[wd+'-'+periodKey];
+  await saveSchedule();
+  document.getElementById('subjectOverlay').classList.remove('open');
+  renderScheduleEditor();
+}
+
+function renderMatchList(){
+  const el = document.getElementById('matchList');
+  const matches = tasks.filter(t=>t.category==='sport').sort((a,b)=>a.date.localeCompare(b.date));
+  if(matches.length===0){ el.innerHTML = `<div class="empty-state" style="padding:16px;">Zatím žádné zápasy</div>`; return; }
+  el.innerHTML = matches.map(m=>{
+    const d = m.date.split('-');
+    return `<div class="simple-row" data-id="${m.id}">
+      <div class="simple-row-main">
+        <div class="simple-row-title">${escapeHtml(m.title)}${m.result?` (${escapeHtml(m.result)})`:''}</div>
+        <div class="simple-row-sub">${d[2]}.${d[1]}.${d[0]} ${m.time?'· '+m.time:''} ${m.done?'· odehráno':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.simple-row').forEach(row=> row.onclick = ()=>openMatchModal(row.dataset.id));
+}
+
+function openMatchModal(taskId){
+  matchCtx = taskId;
+  const del = document.getElementById('matchDelBtn');
+  if(taskId){
+    const t = tasks.find(x=>x.id===taskId);
+    document.getElementById('matchTitle').textContent = 'Upravit zápas';
+    document.getElementById('matchTitleInput').value = t.title;
+    document.getElementById('matchDateInput').value = t.date;
+    document.getElementById('matchTimeInput').value = t.time || '';
+    document.getElementById('matchResultInput').value = t.result || '';
+    del.style.display = 'block';
+  } else {
+    document.getElementById('matchTitle').textContent = 'Nový zápas';
+    document.getElementById('matchTitleInput').value = '';
+    document.getElementById('matchDateInput').value = toKey(selectedDate);
+    document.getElementById('matchTimeInput').value = '';
+    document.getElementById('matchResultInput').value = '';
+    del.style.display = 'none';
+  }
+  document.getElementById('matchOverlay').classList.add('open');
+}
+function closeMatchModal(){ document.getElementById('matchOverlay').classList.remove('open'); }
+async function handleMatchSave(){
+  const title = document.getElementById('matchTitleInput').value.trim();
+  const date = document.getElementById('matchDateInput').value;
+  const time = document.getElementById('matchTimeInput').value;
+  const result = document.getElementById('matchResultInput').value.trim();
+  if(!title || !date) return;
+  if(matchCtx){
+    const t = tasks.find(x=>x.id===matchCtx);
+    t.title = title; t.date = date; t.time = time || null; t.result = result; if(result) t.done = true;
+  } else {
+    tasks.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,7), date, time: time||null, title, category:'sport', done:false, result });
+  }
+  await saveTasks();
+  closeMatchModal();
+  renderMatchList();
+  renderCalendar(); renderAgendaView();
+  if(document.getElementById('dayOverlay').classList.contains('open')) renderDayModalContent();
+}
+async function handleMatchDelete(){
+  tasks = tasks.filter(x=>x.id!==matchCtx);
+  await saveTasks();
+  closeMatchModal();
+  renderMatchList();
+  renderCalendar(); renderAgendaView();
+}
+
+function renderBirthdayList(){
+  const el = document.getElementById('birthdayList');
+  if(birthdays.length===0){ el.innerHTML = `<div class="empty-state" style="padding:16px;">Zatím žádné narozeniny</div>`; return; }
+  const sorted = birthdays.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  el.innerHTML = sorted.map(b=>{
+    const [mm,dd] = b.date.split('-');
+    return `<div class="simple-row" data-id="${b.id}">
+      <div class="simple-row-main">
+        <div class="simple-row-title">🎂 ${escapeHtml(b.name)}</div>
+        <div class="simple-row-sub">${parseInt(dd)}. ${MONTHS_GEN[parseInt(mm)-1]}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.simple-row').forEach(row=> row.onclick = ()=>openBirthdayModal(row.dataset.id));
+}
+function openBirthdayModal(id){
+  birthdayCtx = id;
+  const del = document.getElementById('birthdayDelBtn');
+  if(id){
+    const b = birthdays.find(x=>x.id===id);
+    document.getElementById('birthdayTitle').textContent = 'Upravit narozeniny';
+    document.getElementById('birthdayNameInput').value = b.name;
+    document.getElementById('birthdayDateInput').value = '2000-'+b.date;
+    del.style.display = 'block';
+  } else {
+    document.getElementById('birthdayTitle').textContent = 'Nové narozeniny';
+    document.getElementById('birthdayNameInput').value = '';
+    document.getElementById('birthdayDateInput').value = '';
+    del.style.display = 'none';
+  }
+  document.getElementById('birthdayOverlay').classList.add('open');
+}
+function closeBirthdayModal(){ document.getElementById('birthdayOverlay').classList.remove('open'); }
+async function handleBirthdaySave(){
+  const name = document.getElementById('birthdayNameInput').value.trim();
+  const dateVal = document.getElementById('birthdayDateInput').value;
+  if(!name || !dateVal) return;
+  const md = dateVal.slice(5);
+  if(birthdayCtx){
+    const b = birthdays.find(x=>x.id===birthdayCtx);
+    b.name = name; b.date = md;
+  } else {
+    birthdays.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,7), name, date: md });
+  }
+  await saveBirthdays();
+  closeBirthdayModal();
+  renderBirthdayList();
+  renderCalendar(); renderAgendaView();
+}
+async function handleBirthdayDelete(){
+  birthdays = birthdays.filter(x=>x.id!==birthdayCtx);
+  await saveBirthdays();
+  closeBirthdayModal();
+  renderBirthdayList();
+  renderCalendar(); renderAgendaView();
+}
+
+let editTaskCtx = null;
+
+function openAddModal(dateForNew){
+  editTaskCtx = null;
+  document.getElementById('addOverlay').classList.add('open');
+  document.getElementById('addTitle').textContent = 'Nový úkol / událost';
+  document.getElementById('addDelBtn').style.display = 'none';
+  document.getElementById('dateToWrap').style.display = 'block';
+  document.getElementById('dateFromLabel').textContent = 'Od';
+  document.getElementById('titleInput').value = '';
+  document.getElementById('timeInput').value = '';
+  const k = toKey(dateForNew || new Date());
+  document.getElementById('dateFromInput').value = k;
+  document.getElementById('dateToInput').value = k;
+  selectedCategory = 'work';
+  document.querySelectorAll('.cat-choice').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.cat-choice[data-cat="work"]').classList.add('active');
+  setTimeout(()=>document.getElementById('titleInput').focus(), 50);
+}
+function openEditTaskModal(id){
+  const t = tasks.find(x=>x.id===id);
+  if(!t) return;
+  editTaskCtx = id;
+  document.getElementById('addOverlay').classList.add('open');
+  document.getElementById('addTitle').textContent = 'Upravit';
+  document.getElementById('addDelBtn').style.display = 'block';
+  document.getElementById('dateToWrap').style.display = 'none';
+  document.getElementById('dateFromLabel').textContent = 'Datum';
+  document.getElementById('titleInput').value = t.title;
+  document.getElementById('timeInput').value = t.time || '';
+  document.getElementById('dateFromInput').value = t.date;
+  document.getElementById('dateToInput').value = t.date;
+  selectedCategory = t.category;
+  document.querySelectorAll('.cat-choice').forEach(b=>b.classList.toggle('active', b.dataset.cat===t.category));
+}
+function closeAddModal(){ document.getElementById('addOverlay').classList.remove('open'); }
+
+async function handleSave(){
+  const title = document.getElementById('titleInput').value.trim();
+  if(!title) return;
+  const time = document.getElementById('timeInput').value;
+
+  if(editTaskCtx){
+    const t = tasks.find(x=>x.id===editTaskCtx);
+    if(t){
+      t.title = title; t.time = time || null; t.category = selectedCategory;
+      t.date = document.getElementById('dateFromInput').value || t.date;
+    }
+    await saveTasks();
+    closeAddModal();
+    renderCalendar(); renderAgendaView();
+    if(document.getElementById('dayOverlay').classList.contains('open')) renderDayModalContent();
+    return;
+  }
+
+  const fromVal = document.getElementById('dateFromInput').value;
+  const toVal = document.getElementById('dateToInput').value || fromVal;
+  const [fy,fm,fd] = fromVal.split('-').map(Number);
+  const [ty,tm,td] = toVal.split('-').map(Number);
+  let d = new Date(fy, fm-1, fd);
+  let end = new Date(ty, tm-1, td);
+  if(end < d){ end = new Date(fy, fm-1, fd); }
+  let guard = 0;
+  while(d <= end && guard < 366){
+    tasks.push({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,7)+guard,
+      date: toKey(d), time: time || null, title, category: selectedCategory, done: false
+    });
+    d.setDate(d.getDate()+1);
+    guard++;
+  }
+  await saveTasks();
+  closeAddModal();
+  renderCalendar(); renderAgendaView();
+  if(document.getElementById('dayOverlay').classList.contains('open')) renderDayModalContent();
+}
+async function handleAddDelete(){
+  if(!editTaskCtx) return;
+  tasks = tasks.filter(x=>x.id!==editTaskCtx);
+  await saveTasks();
+  closeAddModal();
+  renderCalendar(); renderAgendaView();
+  if(document.getElementById('dayOverlay').classList.contains('open')) renderDayModalContent();
+}
+
+async function toggleTask(id){
+  const t = tasks.find(x=>x.id===id);
+  if(t){ t.done = !t.done; await saveTasks(); renderDayModalContent(); renderCalendar(); renderAgendaView(); }
+}
+async function deleteTask(id){
+  tasks = tasks.filter(x=>x.id!==id);
+  await saveTasks();
+  renderCalendar(); renderAgendaView(); renderDayModalContent();
+}
+
+function renderCalendar(){
+  document.getElementById('monthLabel').textContent =
+    MONTHS[currentMonth.getMonth()].charAt(0).toUpperCase()+MONTHS[currentMonth.getMonth()].slice(1)+' '+currentMonth.getFullYear();
+
+  const grid = document.getElementById('calendar');
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  let startOffset = firstOfMonth.getDay() - 1;
+  if(startOffset < 0) startOffset = 6;
+  const startDate = new Date(year, month, 1 - startOffset);
+
+  const today = new Date();
+  let html = '';
+  for(let i=0;i<42;i++){
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate()+i);
+    const inMonth = d.getMonth()===month;
+    const isToday = sameDay(d, today);
+    const key = toKey(d);
+    const hol = primaryHoliday(key);
+    const dayTasks = tasks.filter(t=>t.date===key);
+    const cats = [...new Set(dayTasks.map(t=>t.category))].slice(0,2);
+    const dots = cats.map(c=>`<span class="dot" style="background:${CATS[c].hex}"></span>`);
+    if(namedaysFor(key).length) dots.push(`<span class="dot" style="background:var(--nameday)"></span>`);
+    if(birthdaysFor(key).length) dots.push(`<span class="dot" style="background:var(--birthday)"></span>`);
+    html += `<button class="day-cell ${inMonth?'':'muted'} ${isToday?'today':''} ${hol?hol.type:''}" data-key="${key}">
+      <span>${d.getDate()}</span>
+      <span class="dot-row">${dots.slice(0,3).join('')}</span>
+    </button>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.day-cell').forEach(cell=>{
+    cell.onclick = ()=> openDayModal(cell.dataset.key);
+  });
+
+}
+
+function eachDateKey(startKey, endKey, cb){
+  const [sy,sm,sd] = startKey.split('-').map(Number);
+  const [ey,em,ed] = endKey.split('-').map(Number);
+  let d = new Date(sy, sm-1, sd);
+  const end = new Date(ey, em-1, ed);
+  while(d <= end){ cb(toKey(d), d.getDate()); d.setDate(d.getDate()+1); }
+}
+
+function buildAgendaHtml(startKey, endKey, filters){
+  const items = [];
+  tasks.filter(t=> t.date>=startKey && t.date<=endKey).forEach(t=>{
+    const isSkola = t.category==='skola';
+    const isSport = t.category==='sport';
+    if(isSkola && !filters.skola) return;
+    if(isSport && !filters.sport) return;
+    if(!isSkola && !isSport && !filters.events) return;
+    const dd = parseInt(t.date.slice(8));
+    const sub = isSport ? (t.time||'') + (t.result?' · '+t.result:'') : (t.time || (t.period? PERIODS.find(p=>p.key===t.period).label : CATS[t.category].label));
+    items.push({ sort:t.date+'-2', html:`<div class="agenda-row" style="border-left-color:${CATS[t.category].hex}" data-opendate="${t.date}">
+        <div class="agenda-date">${CATS[t.category].icon}<b>${dd}.</b></div>
+        <div class="agenda-text">${escapeHtml(t.title)}${t.done?' ✓':''}<span class="sub">${sub}</span></div>
+      </div>` });
+  });
+  if(filters.people){
+    eachDateKey(startKey, endKey, (dKey, dd)=>{
+      namedaysFor(dKey).forEach(n=>{
+        items.push({ sort:dKey+'-0', html:`<div class="agenda-row" style="border-left-color:var(--nameday)" data-opendate="${dKey}">
+            <div class="agenda-date">🎊<b>${dd}.</b></div>
+            <div class="agenda-text">${n.name} má svátek</div>
+          </div>` });
+      });
+      birthdaysFor(dKey).forEach(b=>{
+        items.push({ sort:dKey+'-1', html:`<div class="agenda-row" style="border-left-color:var(--birthday)" data-opendate="${dKey}">
+            <div class="agenda-date">🎂<b>${dd}.</b></div>
+            <div class="agenda-text">${escapeHtml(b.name)} má narozeniny</div>
+          </div>` });
+      });
+    });
+  }
+  items.sort((a,b)=> a.sort.localeCompare(b.sort));
+  return items.map(i=>i.html).join('');
+}
+
+let agendaMode = 'month';
+let agendaWeekStart = mondayOf(new Date());
+const AGENDA_FILTERS_DEFAULT = { skola:true, sport:true, events:true, people:true, holidays:true };
+let agendaFilters = Object.assign({}, AGENDA_FILTERS_DEFAULT);
+
+function renderAgendaView(){
+  document.getElementById('agModeSeg').querySelectorAll('.seg-btn').forEach(b=> b.classList.toggle('active', b.dataset.val===agendaMode));
+  document.getElementById('agFilterSeg').querySelectorAll('.seg-btn').forEach(b=> b.classList.toggle('active', !!agendaFilters[b.dataset.filter]));
+
+  let startKey, endKey, label;
+  if(agendaMode==='month'){
+    const year = currentMonth.getFullYear(), month = currentMonth.getMonth();
+    startKey = toKey(new Date(year, month, 1));
+    endKey = toKey(new Date(year, month+1, 0));
+    label = MONTHS[month].charAt(0).toUpperCase()+MONTHS[month].slice(1)+' '+year;
+  } else {
+    const start = new Date(agendaWeekStart);
+    const end = new Date(start); end.setDate(end.getDate()+6);
+    startKey = toKey(start); endKey = toKey(end);
+    label = start.getMonth()===end.getMonth()
+      ? `${start.getDate()}.–${end.getDate()}. ${MONTHS_GEN[end.getMonth()]}`
+      : `${start.getDate()}. ${MONTHS_GEN[start.getMonth()]} – ${end.getDate()}. ${MONTHS_GEN[end.getMonth()]}`;
+  }
+  document.getElementById('agLabel').textContent = label;
+
+  const chipsEl = document.getElementById('agHolidayChips');
+  if(agendaFilters.holidays){
+    const overlapping = HOLIDAYS.filter(h=> h.start<=endKey && h.end>=startKey);
+    chipsEl.innerHTML = overlapping.map(h=>{
+      const s = h.start.split('-'); const e = h.end.split('-');
+      const range = h.start===h.end ? `${parseInt(s[2])}. ${MONTHS_GEN[parseInt(s[1])-1]}` : `${parseInt(s[2])}.–${parseInt(e[2])}. ${MONTHS_GEN[parseInt(e[1])-1]}`;
+      const icon = h.type==='prazdniny' ? '🧳' : '🎉';
+      return `<div class="holiday-chip ${h.type}">${icon} ${range}: ${h.label}</div>`;
+    }).join('');
+  } else {
+    chipsEl.innerHTML = '';
+  }
+
+  const agendaHtml = buildAgendaHtml(startKey, endKey, agendaFilters);
+  const agendaEl = document.getElementById('agendaList');
+  agendaEl.innerHTML = agendaHtml || `<div class="empty-state"><strong>Nic k zobrazení</strong>Pro tohle období a vybrané filtry zatím nic nemáš</div>`;
+  agendaEl.querySelectorAll('[data-opendate]').forEach(row=>{
+    row.onclick = ()=> openDayModal(row.dataset.opendate);
+  });
+}
+
+function renderLessonRows(wd, dKey, compact){
+  let list = PERIODS;
+  if(compact){
+    list = PERIODS.filter(p=> subjects[wd+'-'+p.key] || tasks.find(t=>t.category==='skola' && t.date===dKey && t.period===p.key));
+  }
+  if(compact && list.length===0) return `<div class="empty-state" style="padding:14px;">Rozvrh pro tenhle den není vyplněný — otevři Nastavení → Rozvrh</div>`;
+  return list.map(p=>{
+    const subjKey = wd+'-'+p.key;
+    const subj = subjects[subjKey] || '';
+    const task = tasks.find(t=>t.category==='skola' && t.date===dKey && t.period===p.key);
+    const hasNote = task && task.noteType!=='none';
+    const color = subjectColor(subj);
+    const startTime = p.time.split('–')[0];
+    return `<div class="lesson-row" style="border-left-color:${color}; background:${subj?hexA(color,0.08):'var(--surface)'}" data-wd="${wd}" data-period="${p.key}" data-datekey="${dKey}">
+      <div class="lesson-time-badge">
+        <span class="lesson-num" style="background:${hexA(color,0.18)}; color:${color};">${p.key}</span>
+        <span class="lesson-time">${startTime}</span>
+      </div>
+      ${hasNote ? `<button class="check ${task.done?'done':''}" data-checktask="${task.id}">${task.done?'✓':''}</button>` : ''}
+      <span class="lesson-subject ${subj?'':'empty'} ${hasNote&&task.done?'done':''}">${subj?escapeHtml(subj):'Přidat předmět'}</span>
+      ${hasNote ? `<span class="note-badge" style="background:${NOTE_COLORS[task.noteType]}">${NOTE_LABELS[task.noteType]}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function wireLessonRows(container){
+  container.querySelectorAll('.lesson-row').forEach(row=>{
+    row.onclick = (e)=>{
+      if(e.target.closest('[data-checktask]')) return;
+      openLessonModal(parseInt(row.dataset.wd), row.dataset.period, row.dataset.datekey);
+    };
+  });
+  container.querySelectorAll('[data-checktask]').forEach(btn=>{
+    btn.onclick = (e)=>{ e.stopPropagation(); toggleTask(btn.dataset.checktask); };
+  });
+}
+
+function openDayModal(dateKey){
+  const [y,m,dd] = dateKey.split('-').map(Number);
+  selectedDate = new Date(y, m-1, dd);
+  renderDayModalContent();
+  document.getElementById('dayOverlay').classList.add('open');
+}
+function closeDayModal(){ document.getElementById('dayOverlay').classList.remove('open'); }
+
+function renderDayModalContent(){
+  const today = new Date();
+  const key = toKey(selectedDate);
+  const heading = document.getElementById('dayHeading');
+  const sub = document.getElementById('daySub');
+
+  if(sameDay(selectedDate, today)){ heading.textContent = 'Dnes'; }
+  else {
+    const tmr = new Date(today); tmr.setDate(tmr.getDate()+1);
+    heading.textContent = sameDay(selectedDate, tmr) ? 'Zítra' : WEEKDAYS_FULL[(selectedDate.getDay()+6)%7];
+  }
+  sub.textContent = selectedDate.getDate()+'. '+MONTHS_GEN[selectedDate.getMonth()]+' '+selectedDate.getFullYear();
+
+  const wd = (selectedDate.getDay()+6)%7;
+  const isSchoolDay = wd < 5;
+  const hol = primaryHoliday(key);
+  const holidays = getHolidays(key);
+  const namedays = namedaysFor(key);
+  const bdays = birthdaysFor(key);
+
+  const dayTasks = tasks.filter(t=>t.date===key && t.category!=='skola').sort((a,b)=> String(a.time||'99').localeCompare(String(b.time||'99')));
+
+  let html = '';
+  holidays.forEach(h=>{
+    const icon = h.type==='prazdniny' ? '🧳' : '🎉';
+    html += `<div class="holiday-banner ${h.type}">${icon} ${h.label} — do školy se nejde</div>`;
+  });
+  if(namedays.length) html += `<div class="holiday-banner nameday">🎊 Svátek má: ${namedays.map(n=>n.name).join(', ')}</div>`;
+  if(bdays.length) html += `<div class="holiday-banner birthday">🎂 Narozeniny: ${bdays.map(b=>b.name).join(', ')}</div>`;
+
+  if(isSchoolDay && !hol){
+    html += `<div class="section-label">📚 Rozvrh</div><div class="mini-schedule">${renderLessonRows(wd, key, true)}</div>`;
+  }
+
+  html += `<div class="section-label">Úkoly a akce <button class="add-link" id="dayAddBtn">+ přidat</button></div>`;
+  if(dayTasks.length===0){
+    html += `<div class="empty-state"><strong>Zatím nic naplánováno</strong>Přidej úkol nebo událost</div>`;
+  } else {
+    html += `<div class="task-list">${dayTasks.map(t=>{
+      const isSport = t.category==='sport';
+      const metaText = t.time || CATS[t.category].label;
+      return `<div class="task-card" style="border-left-color:${CATS[t.category].hex}; background:${hexA(CATS[t.category].hex,0.07)}">
+        <button class="check ${t.done?'done':''}" data-id="${t.id}">${t.done?'✓':''}</button>
+        <div class="task-body" ${isSport?`data-match="${t.id}"`:`data-edit="${t.id}"`}>
+          <div class="task-title ${t.done?'done':''}">${escapeHtml(t.title)}${t.result?` <span style="color:${CATS.sport.hex}">(${escapeHtml(t.result)})</span>`:''}</div>
+          <div class="task-meta"><span>${CATS[t.category].icon} ${metaText}</span>${isSport?'<span>· klepni pro výsledek</span>':'<span>· klepni pro úpravu</span>'}</div>
+        </div>
+        <button class="del-btn" data-del="${t.id}">×</button>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  const content = document.getElementById('dayContent');
+  content.innerHTML = html;
+
+  content.querySelectorAll('.check[data-id]').forEach(b=> b.onclick = ()=>toggleTask(b.dataset.id));
+  content.querySelectorAll('[data-del]').forEach(b=> b.onclick = ()=>deleteTask(b.dataset.del));
+  content.querySelectorAll('[data-match]').forEach(b=> b.onclick = ()=>openMatchModal(b.dataset.match));
+  content.querySelectorAll('[data-edit]').forEach(b=> b.onclick = ()=>openEditTaskModal(b.dataset.edit));
+  const addBtn = document.getElementById('dayAddBtn');
+  if(addBtn) addBtn.onclick = ()=>openAddModal(selectedDate);
+  wireLessonRows(content);
+}
+
+function openLessonModal(wd, periodKey, dateKey){
+  lessonCtx = { wd, periodKey, dateKey };
+  const subjKey = wd+'-'+periodKey;
+  const subj = subjects[subjKey] || '';
+  const task = tasks.find(t=>t.category==='skola' && t.date===dateKey && t.period===periodKey);
+  const per = PERIODS.find(p=>p.key===periodKey);
+
+  document.getElementById('lessonTitle').textContent = per.label;
+  document.getElementById('lessonSub').textContent = WEEKDAYS_FULL[wd]+' · '+per.time;
+  document.getElementById('lessonSubject').value = subj;
+  document.getElementById('lessonNote').value = task ? (task.extraNote || '') : '';
+
+  lessonNoteType = task ? task.noteType : 'none';
+  document.querySelectorAll('.note-choice').forEach(b=>b.classList.toggle('active', b.dataset.type===lessonNoteType));
+
+  document.getElementById('lessonOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('lessonSubject').focus(), 50);
+}
+function closeLessonModal(){ document.getElementById('lessonOverlay').classList.remove('open'); }
+
+async function handleLessonSave(){
+  const { wd, periodKey, dateKey } = lessonCtx;
+  const subjKey = wd+'-'+periodKey;
+  const subject = document.getElementById('lessonSubject').value.trim();
+  const extraNote = document.getElementById('lessonNote').value.trim();
+
+  if(subject) subjects[subjKey] = subject; else delete subjects[subjKey];
+  await saveSchedule();
+
+  tasks = tasks.filter(t=>!(t.category==='skola' && t.date===dateKey && t.period===periodKey));
+  if(subject && lessonNoteType!=='none'){
+    tasks.push({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+      date: dateKey, period: periodKey, time: null,
+      title: subject + ' – ' + NOTE_LABELS_FULL[lessonNoteType] + (extraNote ? ' ('+extraNote+')' : ''),
+      category: 'skola', noteType: lessonNoteType, extraNote, done:false
+    });
+  }
+  await saveTasks();
+  closeLessonModal();
+  renderDayModalContent();
+}
+
+function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', settings.darkMode ? 'dark' : 'light');
+}
+
+async function init(){
+  if('serviceWorker' in navigator){
+    try{ await navigator.serviceWorker.register('sw.js'); }catch(e){}
+  }
+  await loadAll();
+  applyTheme();
+  buildShell();
+  switchView('cal');
+  renderCalendar(); renderAgendaView();
+  renderSettings();
+}
+init();
+
+})();
+</script>
+</body>
+</html>
